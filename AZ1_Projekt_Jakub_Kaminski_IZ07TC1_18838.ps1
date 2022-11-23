@@ -1,17 +1,23 @@
-﻿clear #
+﻿#cleans terminal
+Clear-Host #
 
 <#----- Functions -----#>
 
-# Creates csv file with headers
-# First argument - header values, Secound argument - fileName (without extension)
-function createCsvWithHeader($headers, $fileName) {
-   Set-Content "$($dirPath)\$($fileName).csv" -Value $headers
+# Creates csv file with headers if doesn't exists
+# First argument - fileName (without extension), Secound argument - header values
+function createCsvWithHeader($fileName, $headers) {
+  $currPath = "$($dirPath)\$($fileName).csv"
+  if(-not(Test-Path -Path $currPath)) {
+    Set-Content $currPath -Value $headers
+    Write-Host "Created directory: $($currPath)" -ForegroundColor Green
+  }
 }
 
 # Adds content to existing csv file 
-# First argument - header values, Secound argument - fileName (without extension)
-function addToCsv($headers, $fileName) {
+# First argument - fileName (without extension), Secound argument - header values
+function addToCsv($fileName, $headers) {
    $headers | Add-Content -Path "$($dirPath)\$($fileName).csv"
+   Write-Host "Added new data to csv: $($fileName)" -ForegroundColor Green
 }
 
 # Gets domain name
@@ -56,20 +62,26 @@ function readUserData
     [Parameter(Mandatory=$true,HelpMessage='Wpisz nazwę swojego działu')]
   	$department
   )
-
   
   $usersAmount = (Get-ADUser -Filter * | measure).Count
-  Get-ADUser -Filter "EmailAddress -eq 'jan.kow@$($domainName)'"
-  if(Get-ADUser -Filter "EmailAddress -eq '$($name).$($surName)@$($domainName)'") {
-    $surName = "$($surName)$($usersAmount )"
+  $currentUserEmail = Get-ADUser -Filter "EmailAddress -eq '$($name).$($surName)@$($domainName)'"
+  if($currentUserEmail) {
+    $surName = "$($surName)$($usersAmount)"
   }
 
   createNewUser $name $surName $department
-}  
+  Write-Host "Created user $($name).$($surName)@$($domainName)" -ForegroundColor Green
+
+  $creationTime = (Get-ADUser -Filter "EmailAddress -eq '$($name).$($surName)@$($domainName)'" -Properties whenCreated).whenCreated
+  $creator = $env:UserName
+  addToCsv "18838_create_user" "$($creator)|$($creationTime)|$($name).$($surName)"
+} 
 
 # Creates new user by data from readUserData function
+# Adds login and password to csv
 function createNewUser($name, $surName, $department) {
-    $password = ConvertTo-SecureString randomPass -AsPlainText -Force
+    $readPass = randomPass
+    $password = ConvertTo-SecureString $readPass -AsPlainText -Force
 
     New-ADUser `
         -UserPrincipalName "$($name).$($surName)" `
@@ -81,6 +93,7 @@ function createNewUser($name, $surName, $department) {
         -Department $department `
         -Enabled $true `
         -Path "OU=$($ou),$($domainNameDN)"
+    addToCsv "18838_nazwa_uzytkownika" "$($name).$($surName)|$($readPass)"
 }
 
 <#----- Variables -----#>
@@ -91,10 +104,16 @@ $domainNameDN = (Get-ADDomain).DistinguishedName
 $index = "18838"
 $ou = $index
 $dirPath = "C:\wit\18838"
-$csvFilePath = "$($dirPath)\AZ3_Wersje_OS_$($index).csv"
 
-verifyAndCreateDirPath
+
+<#----- Launch function -----#>
+
+#Creates directory path for csv files
+verifyAndCreateDirPath $dirPath
+
+# Creates all nescesary csv files for log and data
+createCsvWithHeader "18838_nazwa_uzytkownika" "login|haslo"
+createCsvWithHeader "18838_create_user" "twórca|data utworzenia|nazwa użytkownika"
+
+# Initializes user data reading
 readUserData
-
-<# Creates all nescesary csv files for log and data #>
-Set-Content "$($dirPath)\18838_create_user.csv" -Value "login|haslo"
