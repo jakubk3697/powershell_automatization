@@ -192,6 +192,17 @@ function reportADUsersInfo {
   } 
 }
 
+# Generates report with info about all computers accounts in domain
+function reportADCoumputersInfo {
+  Get-ADComputer -Filter * -Properties Name, SID, distinguishedName, Enabled, LastLogonDate, Created `
+    | Select-Object Name, SID, distinguishedName, Enabled, LastLogonDate, Created | ForEach-Object {
+      $os = (Get-ComputerInfo).windowsProductName
+      $filePath = "$($index)_$($domainName)_$($os).csv"
+      createCsvWithHeader "$($filePath)" "Nazwa komputera|SID obiektu|DistinguishedName|Status konta|Ostatnia zmiana hasla|Data utworzenia"
+      addToCsv "$($filePath)" "$($_.Name)|$($_.SID)|$($_.distinguishedName)|$($_.Enabled)|$($_.LastLogon)|$($_.Created)"
+  }
+}
+
 <#----- Variables -----#>
 
 $domainName = getDomainName
