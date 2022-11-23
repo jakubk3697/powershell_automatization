@@ -51,15 +51,15 @@ function readUserData
   param
   (
     [string]
-    [Parameter(Mandatory=$true,HelpMessage='Wpisz swoje imie')]
+    [Parameter(Mandatory=$true,HelpMessage='Type first name')]
   	$name,
 
 	[string]
-    [Parameter(Mandatory=$true,HelpMessage='Wpisz swoje nazwisko')]
+    [Parameter(Mandatory=$true,HelpMessage='Type last name')]
   	$surName, 
 
     [string]
-    [Parameter(Mandatory=$true,HelpMessage='Wpisz nazwę swojego działu')]
+    [Parameter(Mandatory=$true,HelpMessage='Type your department')]
   	$department
   )
   
@@ -136,7 +136,7 @@ function addNewOU {
   
   if(-not($ouCheck)) {
      New-ADOrganizationalUnit -Name $ou -Path $($domainNameDN) -ProtectedFromAccidentalDeletion $false
-      Write-Host "OU zostało dodane pomyślnie: $($ou)" -ForegroundColor Green
+      Write-Host "Added new OU: $($ou)" -ForegroundColor Green
   }
 } 
 
@@ -144,7 +144,7 @@ function addNewOU {
 
 # Creates groups
 function addNewGroup {
-    $groupName = Read-Host "Wpisz nazwę grupy:"
+    $groupName = Read-Host "Type name for new group:"
     $newOU = "OU=$($ou),$($domainNameDN)"
     New-ADGroup -Name "$($groupName)" -SamAccountName "$($groupName)" -DisplayName "$($groupName)" `
     -GroupCategory Security -GroupScope Global -Path $newOU
@@ -155,6 +155,20 @@ function addNewGroup {
 
     addToCsv "18838_create_group" "$($creator)|$($creationTime)|$($groupName)"
 }
+
+# Adds new user to specific group by user login
+function addGroupMember {
+  $group = Read-Host "Type the group to which you want to add the user: "
+  $member = Read-Host "Type the user login you want to add to the group:"
+  $userStatment = Get-ADGroupMember -Identity $group | Where-Object {$_.name -eq $member}
+  if(-not($userStatment)){
+    Add-ADGroupMember -Identity $group -Members $member  
+    Write-Host "New user $($member) added to group $($group)" -ForegroundColor Green
+  } else {
+    Write-Host "User $($member) exists in group $($group)" -ForegroundColor Red
+  }
+}
+
 
 <#----- Variables -----#>
 
