@@ -4,9 +4,9 @@ Clear-Host #
 <#----- Functions -----#>
 
 # Creates csv file with headers if doesn't exists
-# First argument - fileName (without extension), Secound argument - header values
+# First argument - fileName (witho extension), Secound argument - header values
 function createCsvWithHeader($fileName, $headers) {
-  $currPath = "$($dirPath)\$($fileName).csv"
+  $currPath = "$($dirPath)\$($fileName)"
   if(-not(Test-Path -Path $currPath)) {
     Set-Content $currPath -Value $headers
     Write-Host "Created directory: $($currPath)" -ForegroundColor Green
@@ -14,9 +14,9 @@ function createCsvWithHeader($fileName, $headers) {
 }
 
 # Adds content to existing csv file 
-# First argument - fileName (without extension), Secound argument - header values
+# First argument - fileName (with extension), Secound argument - header values
 function addToCsv($fileName, $headers) {
-   $headers | Add-Content -Path "$($dirPath)\$($fileName).csv"
+   $headers | Add-Content -Path "$($dirPath)\$($fileName)"
    Write-Host "Added new data to csv: $($fileName)" -ForegroundColor Green
 }
 
@@ -73,8 +73,7 @@ function readUserData
   Write-Host "Created user $($name).$($surName)@$($domainName)" -ForegroundColor Green
 
   $creationTime = (Get-ADUser -Filter "EmailAddress -eq '$($name).$($surName)@$($domainName)'" -Properties whenCreated).whenCreated
-  $creator = $env:UserName
-  addToCsv "18838_create_user" "$($creator)|$($creationTime)|$($name).$($surName)"
+  addToCsv "18838_create_user.csv" "$($creator)|$($creationTime)|$($name).$($surName)"
 } 
 
 # Creates new user by data from readUserData function
@@ -93,7 +92,7 @@ function createNewUser($name, $surName, $department) {
         -Department $department `
         -Enabled $true `
         -Path "OU=$($ou),$($domainNameDN)"
-    addToCsv "18838_nazwa_uzytkownika" "$($name).$($surName)|$($readPass)"
+    addToCsv "18838_nazwa_uzytkownika.csv" "$($name).$($surName)|$($readPass)"
 }
 
 # Creates and adds users to AD from csv file
@@ -110,10 +109,8 @@ function disableADAccount {
   Disable-ADAccount -Identity $accountToDisable
   Write-Host "Account disabled $($accountToDisable)" -ForegroundColor Green
 
-  $creator = $env:UserName
   $creationTime = (Get-ADUser -Filter "EmailAddress -eq '$($accountToDisable)@$($domainName)'" -Properties whenCreated).whenCreated
-
-  addToCsv "18838_wylaczone_konta_data" "$($creator)|$($creationTime)|$($accountToDisable)@TCO18838.pl"
+  addToCsv "18838_wylaczone_konta_data.csv" "$($creator)|$($creationTime)|$($accountToDisable)@TCO18838.pl"
 }
 
 # Changes password for user in domain.
@@ -124,10 +121,8 @@ function changeUserPassword {
   Set-ADAccountPassword -Identity "$($accountToChangePass)" -Reset -NewPassword (ConvertTo-SecureString -AsPlainText "$($newPass)" -Force)
 
   Write-Host "Password changed for account: $($accountToChangePass)" -ForegroundColor Green
-  $creator = $env:UserName
   $creationTime = (Get-ADUser -Filter "EmailAddress -eq '$($accountToChangePass)@$($domainName)'" -Properties whenCreated).whenCreated
-
-  addToCsv "18838_zmiana_hasla_data" "$($creator)|$($creationTime)|$($accountToChangePass)@TCO18838.pl"
+  addToCsv "18838_zmiana_hasla_data.csv" "$($creator)|$($creationTime)|$($accountToChangePass)@TCO18838.pl"
 }
 
 #Create OU
@@ -140,8 +135,6 @@ function addNewOU {
   }
 } 
 
-
-
 # Creates groups
 function addNewGroup {
     $groupName = Read-Host "Type name for new group:"
@@ -150,10 +143,8 @@ function addNewGroup {
     -GroupCategory Security -GroupScope Global -Path $newOU
     Write-Host "New grup created: $($groupName)" -ForegroundColor Green
     
-    $creator = $env:UserName
     $creationTime = (Get-ADGroup -Filter "SamAccountName -eq 'test'" -Properties whenCreated).whenCreated
-
-    addToCsv "18838_create_group" "$($creator)|$($creationTime)|$($groupName)"
+    addToCsv "18838_create_group.csv" "$($creator)|$($creationTime)|$($groupName)"
 }
 
 # Adds new user to specific group by user login
@@ -164,12 +155,32 @@ function addGroupMember {
   if(-not($userStatment)){
     Add-ADGroupMember -Identity $group -Members $member  
     Write-Host "New user $($member) added to group $($group)" -ForegroundColor Green
+    addToCsv "18838 zmiana członkostwa grup.txt"$($creator)"|$($member)|$($group)"
   } else {
     Write-Host "User $($member) exists in group $($group)" -ForegroundColor Red
   }
 }
 
+<#----- Generate reports -----#>
 
+# Generates list with all members in each group
+function reportGroupAccounts {
+  (Get-ADGroup -Filter * -Properties name | Select-Object name).name | ForEach-Object {
+    createCsvWithHeader "$($index) $($_).txt" "login"
+    $currentGroup = $_
+    $groupMembers = (Get-ADGroupMember -Identity $_).name | ForEach-Object {
+      addToCsv "$($index) $($currentGroup).txt" $_
+    }
+  }
+}
+
+#(Get-ADGroup -Filter * -Properties name | Select-Object name).name
+#$membersToLog = (Get-ADGroupMember -Identity test1).name
+#createCsvWithHeader "$($index) test1.txt" "login"
+#addToCsv "$($index) test1.txt" $membersToLog
+reportGroupAccounts
+
+addGroupMember
 <#----- Variables -----#>
 
 $domainName = getDomainName
@@ -179,6 +190,7 @@ $index = "18838"
 $ou = $index
 $dirPath = "C:\wit\18838"
 $usersCsvName = "Użytkownicy" # +Później read-host i do funkcji menu
+$creator = $env:UserName
 
 
 <#----- Launch function -----#>
@@ -187,11 +199,12 @@ $usersCsvName = "Użytkownicy" # +Później read-host i do funkcji menu
 verifyAndCreateDirPath $dirPath
 
 # Creates once all nescesary csv files for log and data
-createCsvWithHeader "18838_nazwa_uzytkownika" "login|haslo"
-createCsvWithHeader "18838_create_user" "twórca|data utworzenia|nazwa użytkownika"
-createCsvWithHeader "18838_wylaczone_konta_data" "twórca|data utworzenia|nazwa użytkownika"
-createCsvWithHeader "18838_zmiana_hasla_data" "twórca|data utworzenia|nazwa użytkownika"
-createCsvWithHeader "18838_create_group" "twórca grupy|data utworzenia|nazwa grupy"
+createCsvWithHeader "18838 nazwa uzytkownika" "login|haslo.csv"
+createCsvWithHeader "18838_create_user" "twórca|data utworzenia|nazwa użytkownika.csv"
+createCsvWithHeader "18838 wylaczone konta data" "twórca|data utworzenia|nazwa użytkownika.csv"
+createCsvWithHeader "18838 zmiana hasla data" "twórca|data utworzenia|nazwa użytkownika.csv"
+createCsvWithHeader "18838 create group" "twórca grupy|data utworzenia|nazwa grupy.csv"
+createCsvWithHeader "18838 zmiana członkostwa grup.txt" "twórca|nazwa użytkownika|grupa"
 #Creates once initial OU to keep all object
 addNewOU
 
