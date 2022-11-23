@@ -107,10 +107,13 @@ function createUsersFromCsv {
 # Disables user account by login
 function disableADAccount {
   $accountToDisable = Read-Host "Type AD account login to disable"
-
   Disable-ADAccount -Identity $accountToDisable
   Write-Host "Account disabled $($accountToDisable)" -ForegroundColor Green
-  # +add to csv
+
+  $creator = $env:UserName
+  $creationTime = (Get-ADUser -Filter "EmailAddress -eq '$($accountToDisable)@$($domainName)'" -Properties whenCreated).whenCreated
+
+  addToCsv "18838_wylaczone_konta_data" "$($creator)|$($creationTime)|$($accountToDisable)@TCO18838.pl"
 }
 
 # Changes password for user in domain.
@@ -121,11 +124,12 @@ function changeUserPassword {
   Set-ADAccountPassword -Identity "$($accountToChangePass)" -Reset -NewPassword (ConvertTo-SecureString -AsPlainText "$($newPass)" -Force)
 
   Write-Host "Password changed for account: $($accountToChangePass)" -ForegroundColor Green
-  # +add to csv
+  $creator = $env:UserName
+  $creationTime = (Get-ADUser -Filter "EmailAddress -eq '$($accountToChangePass)@$($domainName)'" -Properties whenCreated).whenCreated
+
+  addToCsv "18838_zmiana_hasla_data" "$($creator)|$($creationTime)|$($accountToChangePass)@TCO18838.pl"
 }
-
 changeUserPassword
-
 <#----- Variables -----#>
 
 $domainName = getDomainName
@@ -145,6 +149,8 @@ verifyAndCreateDirPath $dirPath
 # Creates all nescesary csv files for log and data
 createCsvWithHeader "18838_nazwa_uzytkownika" "login|haslo"
 createCsvWithHeader "18838_create_user" "twórca|data utworzenia|nazwa użytkownika"
+createCsvWithHeader "18838_wylaczone_konta_data" "twórca|data utworzenia|nazwa użytkownika"
+createCsvWithHeader "18838_zmiana_hasla_data" "twórca|data utworzenia|nazwa użytkownika"
 
 # Initializes user data reading
 readUserData
