@@ -104,12 +104,27 @@ function createUsersFromCsv {
   }
 }
 
+# Disables user account by login
 function disableADAccount {
   $accountToDisable = Read-Host "Type AD account login to disable"
 
   Disable-ADAccount -Identity $accountToDisable
   Write-Host "Account disabled $($accountToDisable)" -ForegroundColor Green
+  # +add to csv
 }
+
+# Changes password for user in domain.
+function changeUserPassword {
+  $accountToChangePass = Read-Host "Type AD account login to change his password"
+  $newPass = Read-Host "Type new password"
+
+  Set-ADAccountPassword -Identity "$($accountToChangePass)" -Reset -NewPassword (ConvertTo-SecureString -AsPlainText "$($newPass)" -Force)
+
+  Write-Host "Password changed for account: $($accountToChangePass)" -ForegroundColor Green
+  # +add to csv
+}
+
+changeUserPassword
 
 <#----- Variables -----#>
 
