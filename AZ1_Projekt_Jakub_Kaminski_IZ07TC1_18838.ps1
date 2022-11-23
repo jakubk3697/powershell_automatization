@@ -98,10 +98,17 @@ function createNewUser($name, $surName, $department) {
 
 # Creates and adds users to AD from csv file
 function createUsersFromCsv {
-  $csvUsers = Import-Csv "$($dirPath)\$($usersCsvName)" -Delimiter "|"    
+  $csvUsers = Import-Csv "$($dirPath)\$($usersCsvName).csv" -Delimiter "|"    
   $csvUsers | ForEach-Object {
     readUserData $_.imie $_.nazwisko $._dzial
   }
+}
+
+function disableADAccount {
+  $accountToDisable = Read-Host "Type AD account login to disable"
+
+  Disable-ADAccount -Identity $accountToDisable
+  Write-Host "Account disabled $($accountToDisable)" -ForegroundColor Green
 }
 
 <#----- Variables -----#>
@@ -112,7 +119,7 @@ $domainNameDN = (Get-ADDomain).DistinguishedName
 $index = "18838"
 $ou = $index
 $dirPath = "C:\wit\18838"
-$usersCsvName = "Użytkownicy.csv"
+$usersCsvName = "Użytkownicy" # +Później read-host i do funkcji menu
 
 
 <#----- Launch function -----#>
