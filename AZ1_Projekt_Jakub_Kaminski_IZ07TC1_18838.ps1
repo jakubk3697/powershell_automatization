@@ -163,24 +163,25 @@ function addGroupMember {
 
 <#----- Generate reports -----#>
 
-# Generates list with all members in each group
+# Generates list into .txt file with all members in each group
 function reportGroupAccounts {
   (Get-ADGroup -Filter * -Properties name | Select-Object name).name | ForEach-Object {
     createCsvWithHeader "$($index) $($_).txt" "login"
     $currentGroup = $_
-    $groupMembers = (Get-ADGroupMember -Identity $_).name | ForEach-Object {
+    (Get-ADGroupMember -Identity $_).name | ForEach-Object {
       addToCsv "$($index) $($currentGroup).txt" $_
     }
   }
 }
 
-#(Get-ADGroup -Filter * -Properties name | Select-Object name).name
-#$membersToLog = (Get-ADGroupMember -Identity test1).name
-#createCsvWithHeader "$($index) test1.txt" "login"
-#addToCsv "$($index) test1.txt" $membersToLog
-reportGroupAccounts
-
-addGroupMember
+# Generates specified data into .csv file with all disabled accounts
+function  reportDisabledAccounts {
+  Get-ADUser -Filter {(Enabled -eq $False)}  -Properties SamAccountName, DistinguishedName, SID, modifyTimeStamp | `
+  Select-Object SamAccountName, DistinguishedName, SID, modifyTimeStamp | ForEach-Object {
+    addToCsv "18838 wyłączone konta.csv" "$($_.SamAccountName)|$($_.distinguishedName)|$($_.SID)|$($_.modifyTimeStamp)"
+  } 
+}
+reportDisabledAccounts
 <#----- Variables -----#>
 
 $domainName = getDomainName
@@ -200,11 +201,13 @@ verifyAndCreateDirPath $dirPath
 
 # Creates once all nescesary csv files for log and data
 createCsvWithHeader "18838 nazwa uzytkownika" "login|haslo.csv"
-createCsvWithHeader "18838_create_user" "twórca|data utworzenia|nazwa użytkownika.csv"
-createCsvWithHeader "18838 wylaczone konta data" "twórca|data utworzenia|nazwa użytkownika.csv"
-createCsvWithHeader "18838 zmiana hasla data" "twórca|data utworzenia|nazwa użytkownika.csv"
-createCsvWithHeader "18838 create group" "twórca grupy|data utworzenia|nazwa grupy.csv"
-createCsvWithHeader "18838 zmiana członkostwa grup.txt" "twórca|nazwa użytkownika|grupa"
+createCsvWithHeader "18838_create_user" "autor|data utworzenia|nazwa użytkownika.csv"
+createCsvWithHeader "18838 wylaczone konta data" "autor|data utworzenia|nazwa użytkownika.csv"
+createCsvWithHeader "18838 zmiana hasla data" "autor|data utworzenia|nazwa użytkownika.csv"
+createCsvWithHeader "18838 create group" "autor grupy|data utworzenia|nazwa grupy.csv"
+createCsvWithHeader "18838 zmiana członkostwa grup.txt" "autor|nazwa użytkownika|grupa"
+createCsvWithHeader "18838 wyłączone konta.csv" "Nazwa konta|DistinguishedName|SID|Data ostatniej modyfikacji"
+
 #Creates once initial OU to keep all object
 addNewOU
 
