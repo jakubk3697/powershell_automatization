@@ -96,6 +96,14 @@ function createNewUser($name, $surName, $department) {
     addToCsv "18838_nazwa_uzytkownika" "$($name).$($surName)|$($readPass)"
 }
 
+# Creates and adds users to AD from csv file
+function createUsersFromCsv {
+  $csvUsers = Import-Csv "$($dirPath)\$($usersCsvName)" -Delimiter "|"    
+  $csvUsers | ForEach-Object {
+    readUserData $_.imie $_.nazwisko $._dzial
+  }
+}
+
 <#----- Variables -----#>
 
 $domainName = getDomainName
@@ -104,6 +112,7 @@ $domainNameDN = (Get-ADDomain).DistinguishedName
 $index = "18838"
 $ou = $index
 $dirPath = "C:\wit\18838"
+$usersCsvName = "Użytkownicy.csv"
 
 
 <#----- Launch function -----#>
