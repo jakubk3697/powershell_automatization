@@ -88,6 +88,8 @@ function createNewUser($name, $surName, $department) {
         -EmailAddress "$($name).$($surName)@$($domainName)" `
         -DisplayName "$($name) $($surName)" `
         -Name "$($name).$($surName)" `
+        -GivenName "$($name)" `
+        -Surname "$($surName)" `
         -AccountPassword $password `
         -Department $department `
         -Enabled $true `
@@ -181,7 +183,15 @@ function  reportDisabledAccounts {
     addToCsv "18838 wyłączone konta.csv" "$($_.SamAccountName)|$($_.distinguishedName)|$($_.SID)|$($_.modifyTimeStamp)"
   } 
 }
-reportDisabledAccounts
+
+# Generates report with all importnat AD users info
+function reportADUsersInfo {
+  Get-ADUser -Filter * -Properties givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | `
+  Select-Object givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | ForEach-Object {
+    addToCsv "18838 użytkownicy.csv" "$($_.givenName)|$($_.surName)|$($_.userPrincipalName)|$($_.samAccountName)|$($_.distinguishedName)|$($_.whenCreated)||$($_.modifyTimeStamp)|$($_.LastLogon)|$($_.PasswordLastSet)"
+  } 
+}
+
 <#----- Variables -----#>
 
 $domainName = getDomainName
@@ -207,6 +217,7 @@ createCsvWithHeader "18838 zmiana hasla data" "autor|data utworzenia|nazwa użyt
 createCsvWithHeader "18838 create group" "autor grupy|data utworzenia|nazwa grupy.csv"
 createCsvWithHeader "18838 zmiana członkostwa grup.txt" "autor|nazwa użytkownika|grupa"
 createCsvWithHeader "18838 wyłączone konta.csv" "Nazwa konta|DistinguishedName|SID|Data ostatniej modyfikacji"
+createCsvWithHeader "18838 użytkownicy.csv" ` "imie|nazwisko|login(UPN)|samacount|lokalizacja w ADDS (DN)|data utworzenia|ostatnia modyfikacja|ostatnie logowanie|ostatnia zmiana hasla"
 
 #Creates once initial OU to keep all object
 addNewOU
