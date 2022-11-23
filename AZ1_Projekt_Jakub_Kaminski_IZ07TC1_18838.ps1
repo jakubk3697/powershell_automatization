@@ -203,6 +203,14 @@ function reportADCoumputersInfo {
   }
 }
 
+# Reports OU info
+function reportOUInfo {
+  Get-ADOrganizationalUnit -Filter * -Properties distinguishedName, name | Select-Object distinguishedName, name | Sort-Object distinguishedName `
+  | ForEach-Object {
+    addToCsv "18838_$($os).csv" "$($_.name)|$($_.distinguishedName)"
+  }
+}
+
 <#----- Variables -----#>
 
 $domainName = getDomainName
@@ -213,6 +221,7 @@ $ou = $index
 $dirPath = "C:\wit\18838"
 $usersCsvName = "Użytkownicy" # +Później read-host i do funkcji menu
 $creator = $env:UserName
+$os = $($(Get-ComputerInfo).windowsProductName)
 
 
 <#----- Launch function -----#>
@@ -228,10 +237,12 @@ createCsvWithHeader "18838 zmiana hasla data" "autor|data utworzenia|nazwa użyt
 createCsvWithHeader "18838 create group" "autor grupy|data utworzenia|nazwa grupy.csv"
 createCsvWithHeader "18838 zmiana członkostwa grup.txt" "autor|nazwa użytkownika|grupa"
 createCsvWithHeader "18838 wyłączone konta.csv" "Nazwa konta|DistinguishedName|SID|Data ostatniej modyfikacji"
-createCsvWithHeader "18838 użytkownicy.csv" ` "imie|nazwisko|login(UPN)|samacount|lokalizacja w ADDS (DN)|data utworzenia|ostatnia modyfikacja|ostatnie logowanie|ostatnia zmiana hasla"
+createCsvWithHeader "18838 użytkownicy.csv" "imie|nazwisko|login(UPN)|samacount|lokalizacja w ADDS (DN)|data utworzenia|ostatnia modyfikacja|ostatnie logowanie|ostatnia zmiana hasla"
+createCsvWithHeader "18838_$($os).csv" "Nazwa OU|DistinguishedName"
 
 #Creates once initial OU to keep all object
 addNewOU
 
-# Initializes user data reading
-#readUserData
+# Read data and run specified functions to handle given data
+#readUserData E.g.
+# Function menu with switch statement, Read-host checking and invoking functions
