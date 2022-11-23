@@ -129,7 +129,33 @@ function changeUserPassword {
 
   addToCsv "18838_zmiana_hasla_data" "$($creator)|$($creationTime)|$($accountToChangePass)@TCO18838.pl"
 }
-changeUserPassword
+
+#Create OU
+function addNewOU {
+  $ouCheck = Get-ADOrganizationalUnit -Filter "distinguishedName -eq 'OU=$($ou), $($domainNameDN)'"
+  
+  if(-not($ouCheck)) {
+     New-ADOrganizationalUnit -Name $ou -Path $($domainNameDN) -ProtectedFromAccidentalDeletion $false
+      Write-Host "OU zostało dodane pomyślnie: $($ou)" -ForegroundColor Green
+  }
+} 
+
+
+
+# Creates groups
+function addNewGroup {
+    $groupName = Read-Host "Wpisz nazwę grupy:"
+    $newOU = "OU=$($ou),$($domainNameDN)"
+    New-ADGroup -Name "$($groupName)" -SamAccountName "$($groupName)" -DisplayName "$($groupName)" `
+    -GroupCategory Security -GroupScope Global -Path $newOU
+    Write-Host "New grup created: $($groupName)" -ForegroundColor Green
+    
+    $creator = $env:UserName
+    $creationTime = (Get-ADGroup -Filter "SamAccountName -eq 'test'" -Properties whenCreated).whenCreated
+
+    addToCsv "18838_create_group" "$($creator)|$($creationTime)|$($groupName)"
+}
+
 <#----- Variables -----#>
 
 $domainName = getDomainName
@@ -146,11 +172,14 @@ $usersCsvName = "Użytkownicy" # +Później read-host i do funkcji menu
 #Creates directory path for csv files
 verifyAndCreateDirPath $dirPath
 
-# Creates all nescesary csv files for log and data
+# Creates once all nescesary csv files for log and data
 createCsvWithHeader "18838_nazwa_uzytkownika" "login|haslo"
 createCsvWithHeader "18838_create_user" "twórca|data utworzenia|nazwa użytkownika"
 createCsvWithHeader "18838_wylaczone_konta_data" "twórca|data utworzenia|nazwa użytkownika"
 createCsvWithHeader "18838_zmiana_hasla_data" "twórca|data utworzenia|nazwa użytkownika"
+createCsvWithHeader "18838_create_group" "twórca grupy|data utworzenia|nazwa grupy"
+#Creates once initial OU to keep all object
+addNewOU
 
 # Initializes user data reading
-readUserData
+#readUserData
