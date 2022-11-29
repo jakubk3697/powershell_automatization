@@ -263,19 +263,19 @@ addNewOU
 # Loading data and performing individual functions responsible for individual actions
 do {
   showGreetings
-  Write-Host "[1] Obsługa kont użytkowników"
-  Write-Host "[2] Obsługa kont grup"
-  Write-Host "[3] Generowanie raportów"
+  Write-Host "[1] User accounts"
+  Write-Host "[2] Group accounts"
+  Write-Host "[3] Reports"
 
-  $mainSelect = Read-Host "Wybierz opcję"
+  $mainSelect = Read-Host "Choose option"
   switch ($mainSelect) {
     '1' { 
-      Write-Host "Wybrałeś opcję [$($mainSelect)]" -ForegroundColor Green
-      Write-Host "[1] Tworzenie konta użytkownika"
-      Write-Host "[2] Tworzenie wielu kont na podstawie pliku csv"
-      Write-Host "[3] Wyłączenie konta użytkownika"
-      Write-Host "[4] Zmiana hasła konta uzytkownika"
-      $accountsSelect = Read-Host "Wybierz opcje"
+      Write-Host "You have choosen option [$($mainSelect)]" -ForegroundColor Green
+      Write-Host "[1] Create a user account"
+      Write-Host "[2] Create multiple accounts from a csv file"
+      Write-Host "[3] Disablle a user account"
+      Write-Host "[4] Change the user account password"
+      $accountsSelect = Read-Host "Choose option"
       switch ($accountsSelect) {
         '1' { readUserData }
         '2' { createUsersFromCsv }
@@ -284,23 +284,23 @@ do {
       }
      }
     '2' { 
-      Write-Host "Wybrałeś opcję [$($mainSelect)]" -ForegroundColor Green
-      Write-Host "[1] Utworzenie nowej grupy"
-      Write-Host "[2] Dodanie nowego użytkownika do grupy"
-      $groupsSelect = Read-Host "Wybierz opcje"
+      Write-Host "You have choose option [$($mainSelect)]" -ForegroundColor Green
+      Write-Host "[1] Create a new group"
+      Write-Host "[2] Add a new user to the group"
+      $groupsSelect = Read-Host "Choose option"
       switch ($groupsSelect) {
         '1' { addNewGroup }
         '2' { addGroupMember }
       }
      }
     '3' { 
-      Write-Host "Wybrałeś opcję [$($mainSelect)]" -ForegroundColor Green
-      Write-Host "[1] Generowanie list grup z członkami"
-      Write-Host "[2] Generowanie listy wyłączonych kont w domenie"
-      Write-Host "[3] Generowanie list szczegółowych informacji o kontach użytkowników"
-      Write-Host "[4] Generowanie list szczegółowych informacji o kontach komputerów w domenie"
-      Write-Host "[5] Generowanie listy jednostek organizacyjnych w domenie (alfabetycznie względem OU)"
-      $reportsSelect = Read-Host "Wybierz opcję"
+      Write-Host "You have chosen option [$($mainSelect)]" -ForegroundColor Green
+      Write-Host "[1] Generate group lists with members"
+      Write-Host "[2] Generate a list of disabled accounts in a domain"
+      Write-Host "[3] Generate lists of user account details"
+      Write-Host "[4] Generate lists of computer account details in the domain"
+      Write-Host "[5] Generating a list of OUs in the domain (alphabetically by OU)"
+      $reportsSelect = Read-Host "Choose option"
       switch ($reportsSelect) {
         '1'{ reportGroupAccounts }
         '2'{ reportDisabledAccounts }
