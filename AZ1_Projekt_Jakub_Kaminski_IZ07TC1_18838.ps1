@@ -157,7 +157,7 @@ function addGroupMember {
   if(-not($userStatment)){
     Add-ADGroupMember -Identity $group -Members $member  
     Write-Host "Użytkownik '$($member)' dodany do grupy '$($group)'" -ForegroundColor Green
-    addToFile "18838 zmiana czlonkostwa grup.txt"$($creator)"|$($member)|$($group)"
+    addToFile "18838_zmiana_czlonkostwa_grup.txt" "$($creator)|$($member)|$($group)"
   } else {
     Write-Host "Użytkownik $($member) istnieje w grupie $($group)" -ForegroundColor Red
   }
@@ -245,7 +245,7 @@ createFileWithHeader "18838_create_user.csv" "autor|data utworzenia|nazwa użytk
 createFileWithHeader "18838 wylaczone konta data.txt" "autor|data utworzenia|nazwa użytkownika"
 createFileWithHeader "18838 zmiana hasla data.txt" "autor|data utworzenia|nazwa użytkownika"
 createFileWithHeader "18838 create group.csv" "autor grupy|data utworzenia|nazwa grupy"
-createFileWithHeader "18838 zmiana członkostwa grup.txt" "autor|nazwa użytkownika|grupa"
+createFileWithHeader "18838_zmiana_czlonkostwa_grup.txt" "autor|nazwa użytkownika|grupa"
 createFileWithHeader "18838 wylaczone konta.csv" "Nazwa konta|DistinguishedName|SID|Data ostatniej modyfikacji"
 createFileWithHeader "18838 uzytkownicy.csv" "imie|nazwisko|login(UPN)|samacount|lokalizacja w ADDS (DN)|data utworzenia|ostatnia modyfikacja|ostatnie logowanie|ostatnia zmiana hasla"
 createFileWithHeader "18838_$($os).csv" "Nazwa OU|DistinguishedName"
