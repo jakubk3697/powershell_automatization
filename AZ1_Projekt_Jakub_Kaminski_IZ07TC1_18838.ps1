@@ -14,7 +14,8 @@ function createFileWithHeader($fileName, $headers) {
 # Pierwszy argument - nazwa pliku z rozszerzeniem, drugi argument - wartości nagłówków
 function addToFile($fileName, $headers) {
    $headers | Add-Content -Path "$($dirPath)\$($fileName)"
-   Write-Host "Dodano dane: $($fileName)" -ForegroundColor Green
+   $line = $_.InvocationInfo.ScriptLineNumber
+   Write-Host "Dodano dane do pliku: $($fileName)" $line -ForegroundColor Green 
 }
 
 # Uzyskuje nazwę domeny
@@ -96,9 +97,10 @@ function createNewUser($name, $surName, $department) {
 
 # Tworzenie i dodawanie użytkowników do AD z pliku csv podanego przez uzytkownika
 function createUsersFromCsv {
-  $usersCsvName = Read-Host "Wpisz nazwę pliku z danymi użytkowników np.'Użytkownicy.csv'"
+  $usersCsvName = Read-Host "Wpisz nazwę pliku zawierającego dane użytkowników z nagłówkiem: 'imie|nazwisko|dzial' lub skorzystaj z pliku 'Uzytkownicy.csv'"
   $csvUsers = Import-Csv "$($dirPath)\$($usersCsvName)" -Delimiter "|"    
   $csvUsers | ForEach-Object {
+    Write-host "Dodano użytkownika: $($_.imie) $($_.nazwisko) $($_.dzial)" -ForegroundColor Green
     readUserData $_.imie $_.nazwisko $._dzial
   }
 }
@@ -155,7 +157,7 @@ function addGroupMember {
   if(-not($userStatment)){
     Add-ADGroupMember -Identity $group -Members $member  
     Write-Host "Użytkownik '$($member)' dodany do grupy '$($group)'" -ForegroundColor Green
-    addToFile "18838 zmiana członkostwa grup.txt"$($creator)"|$($member)|$($group)"
+    addToFile "18838 zmiana czlonkostwa grup.txt"$($creator)"|$($member)|$($group)"
   } else {
     Write-Host "Użytkownik $($member) istnieje w grupie $($group)" -ForegroundColor Red
   }
@@ -179,7 +181,7 @@ function reportGroupAccounts {
 function  reportDisabledAccounts {
   Get-ADUser -Filter {(Enabled -eq $False)}  -Properties SamAccountName, DistinguishedName, SID, modifyTimeStamp | `
   Select-Object SamAccountName, DistinguishedName, SID, modifyTimeStamp | ForEach-Object {
-    addToFile "18838 wyłączone konta.csv" "$($_.SamAccountName)|$($_.distinguishedName)|$($_.SID)|$($_.modifyTimeStamp)"
+    addToFile "18838 wylaczone konta.csv" "$($_.SamAccountName)|$($_.distinguishedName)|$($_.SID)|$($_.modifyTimeStamp)"
   } 
 }
 
@@ -187,7 +189,7 @@ function  reportDisabledAccounts {
 function reportADUsersInfo {
   Get-ADUser -Filter * -Properties givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | `
   Select-Object givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | ForEach-Object {
-    addToFile "18838 użytkownicy.csv" "$($_.givenName)|$($_.surName)|$($_.userPrincipalName)|$($_.samAccountName)|$($_.distinguishedName)|$($_.whenCreated)||$($_.modifyTimeStamp)|$($_.LastLogon)|$($_.PasswordLastSet)"
+    addToFile "18838 uzytkownicy.csv" "$($_.givenName)|$($_.surName)|$($_.userPrincipalName)|$($_.samAccountName)|$($_.distinguishedName)|$($_.whenCreated)||$($_.modifyTimeStamp)|$($_.LastLogon)|$($_.PasswordLastSet)"
   } 
 }
 
@@ -218,6 +220,7 @@ function showGreetings {
   Write-Host "Wszystkie utworzone pliki z danymi oraz logami znajdziesz w: $($dirPath)" -ForegroundColor Green 
 }
 
+
 <#----- Zmienne -----#>
 
 $domainName = getDomainName
@@ -229,27 +232,28 @@ $dirPath = "C:\wit\18838"
 $creator = $env:UserName
 $os = $($(Get-ComputerInfo).windowsProductName)
 
+
 <#----- Funkcje inicjalizujące wstępne dane -----#>
 
 #Tworzy ścieżkę katalogową dla plików csv
 verifyAndCreateDirPath $dirPath
 
 # Tworzy wszystkie potrzebne pliki csv dla logów i danych
-createFileWithHeader "18838 nazwa uzytkownika" "login|haslo.csv"
-createFileWithHeader "18838_create_user" "autor|data utworzenia|nazwa użytkownika.csv"
-createFileWithHeader "18838 wylaczone konta data" "autor|data utworzenia|nazwa użytkownika.csv"
-createFileWithHeader "18838 zmiana hasla data" "autor|data utworzenia|nazwa użytkownika.csv"
-createFileWithHeader "18838 create group" "autor grupy|data utworzenia|nazwa grupy.csv"
+createFileWithHeader "Uzytkownicy.csv" "imie|nazwisko|dzial"
+createFileWithHeader "18838 nazwa uzytkownika.csv" "login|haslo"
+createFileWithHeader "18838_create_user.csv" "autor|data utworzenia|nazwa użytkownika"
+createFileWithHeader "18838 wylaczone konta data.txt" "autor|data utworzenia|nazwa użytkownika"
+createFileWithHeader "18838 zmiana hasla data.txt" "autor|data utworzenia|nazwa użytkownika"
+createFileWithHeader "18838 create group.csv" "autor grupy|data utworzenia|nazwa grupy"
 createFileWithHeader "18838 zmiana członkostwa grup.txt" "autor|nazwa użytkownika|grupa"
-createFileWithHeader "18838 wyłączone konta.csv" "Nazwa konta|DistinguishedName|SID|Data ostatniej modyfikacji"
-createFileWithHeader "18838 użytkownicy.csv" "imie|nazwisko|login(UPN)|samacount|lokalizacja w ADDS (DN)|data utworzenia|ostatnia modyfikacja|ostatnie logowanie|ostatnia zmiana hasla"
+createFileWithHeader "18838 wylaczone konta.csv" "Nazwa konta|DistinguishedName|SID|Data ostatniej modyfikacji"
+createFileWithHeader "18838 uzytkownicy.csv" "imie|nazwisko|login(UPN)|samacount|lokalizacja w ADDS (DN)|data utworzenia|ostatnia modyfikacja|ostatnie logowanie|ostatnia zmiana hasla"
 createFileWithHeader "18838_$($os).csv" "Nazwa OU|DistinguishedName"
 
 #Utworzenie OU
 addNewOU
-#
 
-<#----- Panel kontrolny funkcji -----#>
+<#----- Panel kontrolny -----#>
 # Wczytywanie danych i wykonywanie poszczególnych funkcji odpowiedzialnych za poszczególne działania
 do {
   showGreetings
