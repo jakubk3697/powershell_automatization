@@ -92,7 +92,7 @@ function createNewUser($name, $surName, $department) {
         -Department $department `
         -Enabled $true `
         -Path "OU=$($ou),$($domainNameDN)"
-    addToFile "user_name.csv" "$($name).$($surName)|$($readPass)"
+    addToFile "username.csv" "$($name).$($surName)|$($readPass)"
 }
 
 # Create and add users to AD from a csv file provided by the user
@@ -167,11 +167,12 @@ function addGroupMember {
 
 # generates a list to a .csv file with all members of each group
 function reportGroupAccounts {
+  verifyAndCreateDirPath "$($dirPath)\reports\reportGroupAccounts"
   (Get-ADGroup -Filter * -Properties name | Select-Object name).name | ForEach-Object {
-    createFileWithHeader "$($_).csv" "login"
+    createFileWithHeader "reports\reportGroupAccounts\$($_).csv" "login"
     $currentGroup = $_
     (Get-ADGroupMember -Identity $_).name | ForEach-Object {
-      addToFile "$($currentGroup).csv" $_
+      addToFile "reports\reportGroupAccounts\$($currentGroup).csv" $_
     }
   }
 }
@@ -179,26 +180,29 @@ function reportGroupAccounts {
 
 # Generates the specified data to a .csv file with all accounts disabled
 function  reportDisabledAccounts {
+  verifyAndCreateDirPath "$($dirPath)\reports\reportDisabledAccounts"
   Get-ADUser -Filter {(Enabled -eq $False)}  -Properties SamAccountName, DistinguishedName, SID, modifyTimeStamp | `
   Select-Object SamAccountName, DistinguishedName, SID, modifyTimeStamp | ForEach-Object {
-    addToFile "disabled_accounts.csv" "$($_.SamAccountName)|$($_.distinguishedName)|$($_.SID)|$($_.modifyTimeStamp)"
+    addToFile "reports\reportDisabledAccounts\disabled_accounts.csv" "$($_.SamAccountName)|$($_.distinguishedName)|$($_.SID)|$($_.modifyTimeStamp)"
   } 
 }
 
 # Generates a report with the most important information about users in AD
 function reportADUsersInfo {
+  verifyAndCreateDirPath "$($dirPath)\reports\reportADUsersInfo"
   Get-ADUser -Filter * -Properties givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | `
   Select-Object givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | ForEach-Object {
-    addToFile "users.csv" "$($_.givenName)|$($_.surName)|$($_.userPrincipalName)|$($_.samAccountName)|$($_.distinguishedName)|$($_.whenCreated)||$($_.modifyTimeStamp)|$($_.LastLogon)|$($_.PasswordLastSet)"
+    addToFile "reports\reportADUsersInfo\users.csv" "$($_.givenName)|$($_.surName)|$($_.userPrincipalName)|$($_.samAccountName)|$($_.distinguishedName)|$($_.whenCreated)||$($_.modifyTimeStamp)|$($_.LastLogon)|$($_.PasswordLastSet)"
   } 
 }
 
 # Generates a report with information about all computer accounts in the domain
 function reportADCoumputersInfo {
+  verifyAndCreateDirPath "$($dirPath)\reports\reportADCoumputersInfo"
   Get-ADComputer -Filter * -Properties Name, SID, distinguishedName, Enabled, LastLogonDate, Created `
     | Select-Object Name, SID, distinguishedName, Enabled, LastLogonDate, Created | ForEach-Object {
       $os = (Get-ComputerInfo).windowsProductName
-      $filePath = "$($domainName)_$($os).csv"
+      $filePath = "reports\reportADCoumputersInfo\$($domainName)_$($os).csv"
       createFileWithHeader "$($filePath)" "Computer name|SID|DistinguishedName|Account status|Last password change|Creation date"
       addToFile "$($filePath)" "$($_.Name)|$($_.SID)|$($_.distinguishedName)|$($_.Enabled)|$($_.LastLogon)|$($_.Created)"
   }
@@ -206,9 +210,10 @@ function reportADCoumputersInfo {
 
 # Generates OU information and transfers it to a csv file
 function reportOUInfo {
+  verifyAndCreateDirPath "$($dirPath)\reports\reportOUInfo"
   Get-ADOrganizationalUnit -Filter * -Properties distinguishedName, name | Select-Object distinguishedName, name | Sort-Object distinguishedName `
   | ForEach-Object {
-    addToFile "$($os).csv" "$($_.name)|$($_.distinguishedName)"
+    addToFile "reports\reportOUInfo\$($os).csv" "$($_.name)|$($_.distinguishedName)"
   }
 }
 
@@ -236,6 +241,7 @@ $os = $($(Get-ComputerInfo).windowsProductName)
 
 # Create directory path for csv files
 verifyAndCreateDirPath $dirPath
+verifyAndCreateDirPath "$($dirPath)\reports"
 
 # Creates all needed csv files for logs and data
 createFileWithHeader "users_to_add.csv" "name|surname|department"
@@ -248,6 +254,7 @@ createFileWithHeader "changing_group_membership.csv" "author|username|group"
 createFileWithHeader "disabled_accounts.csv" "Account name|DistinguishedName|SID|last modification"
 createFileWithHeader "users.csv" "name|surName|login(UPN)|samacount|localization in ADDS (DN)|creation date|last modification|last login|last password change"
 createFileWithHeader "$($os).csv" "OU|DistinguishedName"
+
 
 #Creates OU
 addNewOU
