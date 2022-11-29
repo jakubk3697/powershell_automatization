@@ -1,29 +1,29 @@
-﻿<#----- Funkcje -----#>
+﻿<#----- Functions -----#>
 
-# Tworzy plik csv z nagłówkami, jeżeli nie istnieje
-# Pierwszy argument - nazwa pliku z rozszerzeniem, drugi argument - wartości nagłówków
+# Create a csv file with headers if it doesn't exist
+# First argument - file name with extension, second argument - header values
 function createFileWithHeader($fileName, $headers) {
   $currPath = "$($dirPath)\$($fileName)"
   if(-not(Test-Path -Path $currPath)) {
     Set-Content $currPath -Value $headers
-    Write-Host "Utworzono plik: $($currPath)" -ForegroundColor Green
+    Write-Host "New file created: $($currPath)" -ForegroundColor Green
   }
 }
 
-# Dodaje zawartość do istniejącego pliku csv 
-# Pierwszy argument - nazwa pliku z rozszerzeniem, drugi argument - wartości nagłówków
+# Adds content to an existing csv file
+# First argument - file name with extension, second argument - header values
 function addToFile($fileName, $headers) {
    $headers | Add-Content -Path "$($dirPath)\$($fileName)"
    $line = $_.InvocationInfo.ScriptLineNumber
-   Write-Host "Dodano dane do pliku: $($fileName)" $line -ForegroundColor Green 
+   Write-Host "Data added to the file: $($fileName)" $line -ForegroundColor Green 
 }
 
-# Uzyskuje nazwę domeny
+# Get the domain name
 function getDomainName {
     return Get-WMIObject Win32_ComputerSystem | Select-Object -ExpandProperty Domain
 }
 
-# Generuje losowe hasło
+# Generates a random password
 function randomPass {
     $newPass = ''
     1..12 | ForEach-Object {
@@ -32,32 +32,32 @@ function randomPass {
     return $newPass
 }
 
-# Tworzy ścieżkę do katalogu, jeśli nie istnieje
+# Create directory path if it doesn't exist
 function verifyAndCreateDirPath($path) {
     if(Test-Path -Path $path) {
-        Write-Host "Podana ścieżka katalogowa istnieje" -ForegroundColor Red
+        Write-Host "The specified directory path exists" -ForegroundColor Red
     } else {
         New-Item $path -ItemType Directory -Force
-        Write-Host "Utworzono nową ścieżkę katalogową:  $($path)" -ForegroundColor Green
+        Write-Host "A new directory path has been created:  $($path)" -ForegroundColor Green
     }
 }
 
-# Pobiera niezbędne informacje o użytkowniku do utworzenia konta użytkownika w funkcji createNewUser
-# i wysyła logi do pliku 18838_create_user.csv  
+# Fetches the necessary user information to create a user account in the createNewUser function
+# and sends logs to file create_user.csv
 function readUserData
 {
   param
   (
     [string]
-    [Parameter(Mandatory=$true,HelpMessage='Wpisz imie')]
+    [Parameter(Mandatory=$true,HelpMessage='Type name')]
   	$name,
 
 	[string]
-    [Parameter(Mandatory=$true,HelpMessage='Wpisz nazwisko')]
+    [Parameter(Mandatory=$true,HelpMessage='Type surname')]
   	$surName, 
 
     [string]
-    [Parameter(Mandatory=$true,HelpMessage='Wpisz nazwę działu')]
+    [Parameter(Mandatory=$true,HelpMessage='Type department')]
   	$department
   )
   
@@ -68,14 +68,14 @@ function readUserData
   }
 
   createNewUser $name $surName $department
-  Write-Host "Utworzono użytkownika $($name).$($surName)@$($domainName)" -ForegroundColor Green
+  Write-Host "Created user $($name).$($surName)@$($domainName)" -ForegroundColor Green
 
   $creationTime = (Get-ADUser -Filter "EmailAddress -eq '$($name).$($surName)@$($domainName)'" -Properties whenCreated).whenCreated
-  addToFile "18838_create_user.csv" "$($creator)|$($creationTime)|$($name).$($surName)"
+  addToFile "create_user.csv" "$($creator)|$($creationTime)|$($name).$($surName)"
 } 
 
-#Tworzy nowego użytkownika na podstawie danych z funkcji readUserData
-# Dodaje login i hasło do csv
+#Creates a new user based on the data from the readUserData function
+# Adds login and password to csv file
 function createNewUser($name, $surName, $department) {
     $readPass = randomPass
     $password = ConvertTo-SecureString $readPass -AsPlainText -Force
@@ -92,169 +92,168 @@ function createNewUser($name, $surName, $department) {
         -Department $department `
         -Enabled $true `
         -Path "OU=$($ou),$($domainNameDN)"
-    addToFile "18838_nazwa_uzytkownika.csv" "$($name).$($surName)|$($readPass)"
+    addToFile "user_name.csv" "$($name).$($surName)|$($readPass)"
 }
 
-# Tworzenie i dodawanie użytkowników do AD z pliku csv podanego przez uzytkownika
+# Create and add users to AD from a csv file provided by the user
 function createUsersFromCsv {
-  $usersCsvName = Read-Host "Wpisz nazwę pliku zawierającego dane użytkowników z nagłówkiem: 'imie|nazwisko|dzial' lub skorzystaj z pliku 'Uzytkownicy.csv'"
+  $usersCsvName = Read-Host "Type the name of the file containing user data with the heading: 'name|surname|department' or use the file 'users_to_add.csv'"
   $csvUsers = Import-Csv "$($dirPath)\$($usersCsvName)" -Delimiter "|"    
   $csvUsers | ForEach-Object {
-    Write-host "Dodano użytkownika: $($_.imie) $($_.nazwisko) $($_.dzial)" -ForegroundColor Green
-    readUserData $_.imie $_.nazwisko $._dzial
+    Write-host "Created user: $($_.name) $($_.surName) $($_.department)" -ForegroundColor Green
+    readUserData $_.name $_.surName $.department
   }
 }
 
-# Wyłacza poszczególne konto w oparciu o podany login
+# Disables a particular account based on given login
 function disableADAccount {
-  $accountToDisable = Read-Host "Wpisz login użytkownika w celu wyłączenia konta (np. jan.kowalski)"
+  $accountToDisable = Read-Host "Type the username to disable the account (e.g. john.doe))"
   Disable-ADAccount -Identity $accountToDisable
-  Write-Host "Wyłączono konto: $($accountToDisable)" -ForegroundColor Green
+  Write-Host "Disabled account: $($accountToDisable)" -ForegroundColor Green
 
   $creationTime = (Get-ADUser -Filter "EmailAddress -eq '$($accountToDisable)@$($domainName)'" -Properties whenCreated).whenCreated
-  addToFile "18838_wylaczone_konta_data.csv" "$($creator)|$($creationTime)|$($accountToDisable)@TCO18838.pl"
+  addToFile "disabled_accounts_data.csv" "$($creator)|$($creationTime)|$($accountToDisable)@c"
 }
 
-# Zmienia hasło dla użytkownika w domenie w oparciu o podany login
+# Changes the password for a user in the domain based on the given login
 function changeUserPassword {
-  $accountToChangePass = Read-Host "Wpisz login użytkownika w celu zmiany jego hasła (np. jan.kowalski)"
-  $newPass = Read-Host "Wpisz nowe hasło"
+  $accountToChangePass = Read-Host "Enter the user's login to change his password (e.g. john.doe)"
+  $newPass = Read-Host "Type new password"
 
   Set-ADAccountPassword -Identity "$($accountToChangePass)" -Reset -NewPassword (ConvertTo-SecureString -AsPlainText "$($newPass)" -Force)
 
-  Write-Host "Zmieniono hasło dla konta: $($accountToChangePass)" -ForegroundColor Green
+  Write-Host "Account password changed: $($accountToChangePass)" -ForegroundColor Green
   $creationTime = (Get-ADUser -Filter "EmailAddress -eq '$($accountToChangePass)@$($domainName)'" -Properties whenCreated).whenCreated
-  addToFile "18838_zmiana_hasla_data.csv" "$($creator)|$($creationTime)|$($accountToChangePass)@TCO18838.pl"
+  addToFile "password_change_data.csv" "$($creator)|$($creationTime)|$($accountToChangePass)@$($domainName)"
 }
 
-#Tworzy nowe OU w oparciu o zmienną
+# Creates a new OU based on a variable
 function addNewOU {
   $ouCheck = Get-ADOrganizationalUnit -Filter "distinguishedName -eq 'OU=$($ou), $($domainNameDN)'"
   
   if(-not($ouCheck)) {
      New-ADOrganizationalUnit -Name $ou -Path $($domainNameDN) -ProtectedFromAccidentalDeletion $false
-      Write-Host "Dodano OU: $($ou)" -ForegroundColor Green
+      Write-Host "Created OU: $($ou)" -ForegroundColor Green
   }
 } 
 
-# Tworzy grupę w nowym OU (dla łatwego zarządzania) na podstawie danych od użytkownia
+# Creates a group in a new OU (for easy management) based on user input
 function addNewGroup {
-    $groupName = Read-Host "Wpisz nazwę dla nowej grupy zasobów:"
+    $groupName = Read-Host "Type a name for the new resource group:"
     $newOU = "OU=$($ou),$($domainNameDN)"
     New-ADGroup -Name "$($groupName)" -SamAccountName "$($groupName)" -DisplayName "$($groupName)" `
     -GroupCategory Security -GroupScope Global -Path $newOU
-    Write-Host "Utworzono nową grupę: $($groupName)" -ForegroundColor Green
+    Write-Host "Created new group: $($groupName)" -ForegroundColor Green
     
-    $creationTime = (Get-ADGroup -Filter "SamAccountName -eq 'test'" -Properties whenCreated).whenCreated
-    addToFile "18838_create_group.csv" "$($creator)|$($creationTime)|$($groupName)"
+    $creationTime = (Get-ADGroup -Filter "SamAccountName -eq '$($groupName)'" -Properties whenCreated).whenCreated
+    addToFile "create_group.csv" "$($creator)|$($creationTime)|$($groupName)"
 }
 
-# Dodaje nowego użytkownika do określonej grupy na podstawie loginu użytkownika
+# Adds a new user to the specified group based on the user's login
 function addGroupMember {
-  $group = Read-Host "Wpisz nazwę grupy do której chcesz dodać użytkownika: "
-  $member = Read-Host "Wpisz login użytkownika, który ma zostać dodany do wybranej grupy:"
+  $group = Read-Host "Type the name of the group to which you want to add the user: "
+  $member = Read-Host "Type the login of the user to be added to the selected group:"
   $userStatment = Get-ADGroupMember -Identity $group | Where-Object {$_.name -eq $member}
   if(-not($userStatment)){
     Add-ADGroupMember -Identity $group -Members $member  
-    Write-Host "Użytkownik '$($member)' dodany do grupy '$($group)'" -ForegroundColor Green
-    addToFile "18838_zmiana_czlonkostwa_grup.txt" "$($creator)|$($member)|$($group)"
+    Write-Host "User '$($member)' added to group '$($group)'" -ForegroundColor Green
+    addToFile "changing_group_membership.csv" "$($creator)|$($member)|$($group)"
   } else {
-    Write-Host "Użytkownik $($member) istnieje w grupie $($group)" -ForegroundColor Red
+    Write-Host "User $($member) already exists in $($group)" -ForegroundColor Red
   }
 }
 
 <#----- Generate reports -----#>
 
-# Generuje listę do pliku .txt z wszystkimi członkami każdej grupy
+# generates a list to a .csv file with all members of each group
 function reportGroupAccounts {
   (Get-ADGroup -Filter * -Properties name | Select-Object name).name | ForEach-Object {
-    createFileWithHeader "$($index) $($_).txt" "login"
+    createFileWithHeader "$($_).csv" "login"
     $currentGroup = $_
     (Get-ADGroupMember -Identity $_).name | ForEach-Object {
-      addToFile "$($index) $($currentGroup).txt" $_
+      addToFile "$($currentGroup).csv" $_
     }
   }
 }
 
 
-# Generuje określone dane do pliku .csv z wszystkimi wyłączonymi kontami
+# Generates the specified data to a .csv file with all accounts disabled
 function  reportDisabledAccounts {
   Get-ADUser -Filter {(Enabled -eq $False)}  -Properties SamAccountName, DistinguishedName, SID, modifyTimeStamp | `
   Select-Object SamAccountName, DistinguishedName, SID, modifyTimeStamp | ForEach-Object {
-    addToFile "18838 wylaczone konta.csv" "$($_.SamAccountName)|$($_.distinguishedName)|$($_.SID)|$($_.modifyTimeStamp)"
+    addToFile "disabled_accounts.csv" "$($_.SamAccountName)|$($_.distinguishedName)|$($_.SID)|$($_.modifyTimeStamp)"
   } 
 }
 
-# Generuje raport z najważniejszymi informacjami o użytkownikach w AD
+# Generates a report with the most important information about users in AD
 function reportADUsersInfo {
   Get-ADUser -Filter * -Properties givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | `
   Select-Object givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | ForEach-Object {
-    addToFile "18838 uzytkownicy.csv" "$($_.givenName)|$($_.surName)|$($_.userPrincipalName)|$($_.samAccountName)|$($_.distinguishedName)|$($_.whenCreated)||$($_.modifyTimeStamp)|$($_.LastLogon)|$($_.PasswordLastSet)"
+    addToFile "users.csv" "$($_.givenName)|$($_.surName)|$($_.userPrincipalName)|$($_.samAccountName)|$($_.distinguishedName)|$($_.whenCreated)||$($_.modifyTimeStamp)|$($_.LastLogon)|$($_.PasswordLastSet)"
   } 
 }
 
-# Generuje raport z informacjami o wszystkich kontach komputerów w domenie
+# Generates a report with information about all computer accounts in the domain
 function reportADCoumputersInfo {
   Get-ADComputer -Filter * -Properties Name, SID, distinguishedName, Enabled, LastLogonDate, Created `
     | Select-Object Name, SID, distinguishedName, Enabled, LastLogonDate, Created | ForEach-Object {
       $os = (Get-ComputerInfo).windowsProductName
-      $filePath = "$($index)_$($domainName)_$($os).csv"
-      createFileWithHeader "$($filePath)" "Nazwa komputera|SID obiektu|DistinguishedName|Status konta|Ostatnia zmiana hasla|Data utworzenia"
+      $filePath = "$($domainName)_$($os).csv"
+      createFileWithHeader "$($filePath)" "Computer name|SID|DistinguishedName|Account status|Last password change|Creation date"
       addToFile "$($filePath)" "$($_.Name)|$($_.SID)|$($_.distinguishedName)|$($_.Enabled)|$($_.LastLogon)|$($_.Created)"
   }
 }
 
-# Generuje informacje o OU i przekazuje je pliku csv
+# Generates OU information and transfers it to a csv file
 function reportOUInfo {
   Get-ADOrganizationalUnit -Filter * -Properties distinguishedName, name | Select-Object distinguishedName, name | Sort-Object distinguishedName `
   | ForEach-Object {
-    addToFile "18838_$($os).csv" "$($_.name)|$($_.distinguishedName)"
+    addToFile "$($os).csv" "$($_.name)|$($_.distinguishedName)"
   }
 }
 
-# Pokazuje intro w panelu sterowania
+# It shows the intro in the control panel
 function showGreetings {
   Clear-Host
-  Write-Host "____________________| Automatyzacja zasobów active directory |____________________" -ForegroundColor Magenta
-  Write-Host  "-------> Używaj klawiszy numerycznych zgodnie z poleceniami pomocniczymi, aby wykonać poszczególne akcje AD <------- " -ForegroundColor Green
-  Write-Host "Wszystkie utworzone pliki z danymi oraz logami znajdziesz w: $($dirPath)" -ForegroundColor Green 
+  Write-Host "____________________| Automation of active directory resources |____________________" -ForegroundColor Magenta
+  Write-Host  "-------> Use the numeric keys as instructed to perform AD actions<------- " -ForegroundColor Green
+  Write-Host "All created data and log files can be found in: $($dirPath)" -ForegroundColor Green 
 }
 
 
-<#----- Zmienne -----#>
+<#----- Variables -----#>
 
 $domainName = getDomainName
 $domainNameDN = (Get-ADDomain).DistinguishedName
 
-$index = "18838"
-$ou = $index
-$dirPath = "C:\wit\18838"
+$ou = "myNewOU"
+$dirPath = "C:\PS\generated"
 $creator = $env:UserName
 $os = $($(Get-ComputerInfo).windowsProductName)
 
 
-<#----- Funkcje inicjalizujące wstępne dane -----#>
+<#----- Initial data initialization functions -----#>
 
-#Tworzy ścieżkę katalogową dla plików csv
+# Create directory path for csv files
 verifyAndCreateDirPath $dirPath
 
-# Tworzy wszystkie potrzebne pliki csv dla logów i danych
-createFileWithHeader "Uzytkownicy.csv" "imie|nazwisko|dzial"
-createFileWithHeader "18838 nazwa uzytkownika.csv" "login|haslo"
-createFileWithHeader "18838_create_user.csv" "autor|data utworzenia|nazwa użytkownika"
-createFileWithHeader "18838 wylaczone konta data.txt" "autor|data utworzenia|nazwa użytkownika"
-createFileWithHeader "18838 zmiana hasla data.txt" "autor|data utworzenia|nazwa użytkownika"
-createFileWithHeader "18838 create group.csv" "autor grupy|data utworzenia|nazwa grupy"
-createFileWithHeader "18838_zmiana_czlonkostwa_grup.txt" "autor|nazwa użytkownika|grupa"
-createFileWithHeader "18838 wylaczone konta.csv" "Nazwa konta|DistinguishedName|SID|Data ostatniej modyfikacji"
-createFileWithHeader "18838 uzytkownicy.csv" "imie|nazwisko|login(UPN)|samacount|lokalizacja w ADDS (DN)|data utworzenia|ostatnia modyfikacja|ostatnie logowanie|ostatnia zmiana hasla"
-createFileWithHeader "18838_$($os).csv" "Nazwa OU|DistinguishedName"
+# Creates all needed csv files for logs and data
+createFileWithHeader "users_to_add.csv" "name|surname|department"
+createFileWithHeader "username.csv" "login|password"
+createFileWithHeader "create_user.csv" "author|creation date|username"
+createFileWithHeader "disabled_accounts_data.csv" "author|creation date|username"
+createFileWithHeader "password_change_data.csv" "author|creation date|username"
+createFileWithHeader "create_group.csv" "group author|creation date|group name"
+createFileWithHeader "changing_group_membership.csv" "author|username|group"
+createFileWithHeader "disabled_accounts.csv" "Account name|DistinguishedName|SID|last modification"
+createFileWithHeader "users.csv" "name|surName|login(UPN)|samacount|localization in ADDS (DN)|creation date|last modification|last login|last password change"
+createFileWithHeader "$($os).csv" "OU|DistinguishedName"
 
-#Utworzenie OU
+#Creates OU
 addNewOU
 
-<#----- Panel kontrolny -----#>
-# Wczytywanie danych i wykonywanie poszczególnych funkcji odpowiedzialnych za poszczególne działania
+<#----- Control panel -----#>
+# Loading data and performing individual functions responsible for individual actions
 do {
   showGreetings
   Write-Host "[1] Obsługa kont użytkowników"
