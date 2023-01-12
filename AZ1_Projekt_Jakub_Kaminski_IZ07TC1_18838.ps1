@@ -181,15 +181,16 @@ function reportGroupAccounts {
 # Generates the specified data to a .csv file with all accounts disabled
 function  reportDisabledAccounts {
   verifyAndCreateDirPath "$($dirPath)\reports\reportDisabledAccounts"
+  createFileWithHeader "reports\reportDisabledAccounts\disabled_accounts.csv" "Account name|DistinguishedName|SID|last modification"
   Get-ADUser -Filter {(Enabled -eq $False)}  -Properties SamAccountName, DistinguishedName, SID, modifyTimeStamp | `
   Select-Object SamAccountName, DistinguishedName, SID, modifyTimeStamp | ForEach-Object {
     addToFile "reports\reportDisabledAccounts\disabled_accounts.csv" "$($_.SamAccountName)|$($_.distinguishedName)|$($_.SID)|$($_.modifyTimeStamp)"
   } 
 }
-
 # Generates a report with the most important information about users in AD
 function reportADUsersInfo {
   verifyAndCreateDirPath "$($dirPath)\reports\reportADUsersInfo"
+  createFileWithHeader "\reports\reportADUsersInfo\users.csv" "name|surName|login(UPN)|samacount|localization in ADDS (DN)|creation date|last modification|last login|last password change"
   Get-ADUser -Filter * -Properties givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | `
   Select-Object givenName, surName, userPrincipalName, samAccountName, distinguishedName, whenCreated, modifyTimeStamp, LastLogon, PasswordLastSet | ForEach-Object {
     addToFile "reports\reportADUsersInfo\users.csv" "$($_.givenName)|$($_.surName)|$($_.userPrincipalName)|$($_.samAccountName)|$($_.distinguishedName)|$($_.whenCreated)||$($_.modifyTimeStamp)|$($_.LastLogon)|$($_.PasswordLastSet)"
@@ -211,6 +212,7 @@ function reportADCoumputersInfo {
 # Generates OU information and transfers it to a csv file
 function reportOUInfo {
   verifyAndCreateDirPath "$($dirPath)\reports\reportOUInfo"
+  createFileWithHeader "reports\reportOUInfo\$($os).csv" "OU|DistinguishedName"
   Get-ADOrganizationalUnit -Filter * -Properties distinguishedName, name | Select-Object distinguishedName, name | Sort-Object distinguishedName `
   | ForEach-Object {
     addToFile "reports\reportOUInfo\$($os).csv" "$($_.name)|$($_.distinguishedName)"
@@ -251,65 +253,72 @@ createFileWithHeader "disabled_accounts_data.csv" "author|creation date|username
 createFileWithHeader "password_change_data.csv" "author|creation date|username"
 createFileWithHeader "create_group.csv" "group author|creation date|group name"
 createFileWithHeader "changing_group_membership.csv" "author|username|group"
-createFileWithHeader "disabled_accounts.csv" "Account name|DistinguishedName|SID|last modification"
-createFileWithHeader "users.csv" "name|surName|login(UPN)|samacount|localization in ADDS (DN)|creation date|last modification|last login|last password change"
-createFileWithHeader "$($os).csv" "OU|DistinguishedName"
-
-
 #Creates OU
 addNewOU
 
 <#----- Control panel -----#>
 # Loading data and performing individual functions responsible for individual actions
-do {
-  showGreetings
-  Write-Host "[1] Obsługa kont użytkowników"
-  Write-Host "[2] Obsługa kont grup"
-  Write-Host "[3] Generowanie raportów"
 
-  $mainSelect = Read-Host "Wybierz opcję"
-  switch ($mainSelect) {
-    '1' { 
-      Write-Host "Wybrałeś opcję [$($mainSelect)]" -ForegroundColor Green
-      Write-Host "[1] Tworzenie konta użytkownika"
-      Write-Host "[2] Tworzenie wielu kont na podstawie pliku csv"
-      Write-Host "[3] Wyłączenie konta użytkownika"
-      Write-Host "[4] Zmiana hasła konta uzytkownika"
-      $accountsSelect = Read-Host "Wybierz opcje"
-      switch ($accountsSelect) {
-        '1' { readUserData }
-        '2' { createUsersFromCsv }
-        '3' { disableADAccount }
-        '4' { changeUserPassword }
-      }
-     }
-    '2' { 
-      Write-Host "Wybrałeś opcję [$($mainSelect)]" -ForegroundColor Green
-      Write-Host "[1] Utworzenie nowej grupy"
-      Write-Host "[2] Dodanie nowego użytkownika do grupy"
-      $groupsSelect = Read-Host "Wybierz opcje"
-      switch ($groupsSelect) {
-        '1' { addNewGroup }
-        '2' { addGroupMember }
-      }
-     }
-    '3' { 
-      Write-Host "Wybrałeś opcję [$($mainSelect)]" -ForegroundColor Green
-      Write-Host "[1] Generowanie list grup z członkami"
-      Write-Host "[2] Generowanie listy wyłączonych kont w domenie"
-      Write-Host "[3] Generowanie list szczegółowych informacji o kontach użytkowników"
-      Write-Host "[4] Generowanie list szczegółowych informacji o kontach komputerów w domenie"
-      Write-Host "[5] Generowanie listy jednostek organizacyjnych w domenie (alfabetycznie względem OU)"
-      $reportsSelect = Read-Host "Wybierz opcję"
-      switch ($reportsSelect) {
-        '1'{ reportGroupAccounts }
-        '2'{ reportDisabledAccounts }
-        '3'{ reportADUsersInfo }
-        '4'{ reportADCoumputersInfo }
-        '5'{ reportOUInfo }
-      }
-     }
+function startMenu {
+  do {
+    showGreetings
+    Write-Host "[1] Handle user accounts"
+    Write-Host "[2] Handle group accounts"
+    Write-Host "[3] Generate reports"
+  
+    $mainSelect = Read-Host "Select the option"
+    switch ($mainSelect) {
+      '1' { 
+        Write-Host "You have selected [$($mainSelect)]" -ForegroundColor Green
+        Write-Host "[1] Create a user account"
+        Write-Host "[2] Create multiple accounts from a csv file"
+        Write-Host "[3] Disable a user account"
+        Write-Host "[4] Change user account password"
+        Write-Host "*NOTE Type 'enter' with random value to exit this submenu"
+        $accountsSelect = Read-Host "Select the option"
+        switch ($accountsSelect) {
+          '1' { readUserData }
+          '2' { createUsersFromCsv }
+          '3' { disableADAccount }
+          '4' { changeUserPassword }
+          default {startMenu}
+        }
+       }
+      '2' { 
+        Write-Host "You have selected [$($mainSelect)]" -ForegroundColor Green
+        Write-Host "[1] Create a new group"
+        Write-Host "[2] Add a new user to the group"
+        Write-Host "[NOTE] Type 'enter' with random value to exit this submenu"
+        $groupsSelect = Read-Host "Select the option"
+        switch ($groupsSelect) {
+          '1' { addNewGroup }
+          '2' { addGroupMember }
+          default {startMenu}
+        }
+       }
+      '3' { 
+        Write-Host "You have selected [$($mainSelect)]" -ForegroundColor Green
+        Write-Host "[1] Generate group lists with members"
+        Write-Host "[2] Generate a list of disabled accounts in the domain"
+        Write-Host "[3] Generate lists of detailed information about user accounts"
+        Write-Host "[4] Generate lists of detailed information about computer accounts in the domain"
+        Write-Host "[5] Generate list of organizational units in the domain (alphabetically relative to the OU)"
+        Write-Host "[NOTE] Type 'enter' with random value to exit this submenu"
+        $reportsSelect = Read-Host "Select the option"
+        switch ($reportsSelect) {
+          '1'{ reportGroupAccounts }
+          '2'{ reportDisabledAccounts }
+          '3'{ reportADUsersInfo }
+          '4'{ reportADCoumputersInfo }
+          '5'{ reportOUInfo }
+          default {startMenu}
+        }
+       }
+    }
+    pause
   }
-  pause
+  until ($selection -eq 'q')s
 }
-until ($selection -eq 'q')
+
+#initialize menu for the first time
+startMenu
